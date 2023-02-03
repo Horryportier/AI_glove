@@ -97,6 +97,6 @@ void loop(void) {
 
         client.print(output);
         client.stop();
-        delay(50);
+        delay(1000);
         digitalWrite(LED_BUILDIN, HIGH);
 }
