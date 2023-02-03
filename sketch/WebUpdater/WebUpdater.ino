@@ -91,12 +91,12 @@ void loop(void) {
         WiFiClient client;
 
         if (!client.connect(pc, port)) {
-                digitalWrite(LED_BUILDIN, HIGH);
+                digitalWrite(LED_BUILDIN, LOW);
                 return;
         }
 
         client.print(output);
         client.stop();
-        delay(20);
-        digitalWrite(LED_BUILDIN, LOW);
+        delay(50);
+        digitalWrite(LED_BUILDIN, HIGH);
 }

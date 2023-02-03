@@ -1,87 +1,63 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 )
 
-type Payload struct {
-	Hall int
-	Mpu  Mpu
+type Server struct {
+	listenAddr string
+	ln         net.Listener
+	quitch     chan struct{}
+	msgch      chan []byte
 }
 
-type Mpu struct {
-	Status       string
-	Acceleration Acceleration
-	Rotation     Rotation
-	Temp         float64
+func NewServer(listenAddr string) *Server {
+	return &Server{
+		listenAddr: listenAddr,
+		quitch:     make(chan struct{}),
+                msgch: make(chan []byte, 100),
+	}
 }
 
-type Acceleration struct {
-	X float64
-	Y float64
-	Z float64
-}
-type Rotation struct {
-	X float64
-	Y float64
-	Z float64
-}
-
-func Connect(SERVER_HOST, SERVER_PORT, SERVER_TYPE string) error {
-	fmt.Println("Server Running...")
-	server, err := net.Listen(SERVER_TYPE, SERVER_HOST+":"+SERVER_PORT)
+func (s *Server) Start() error {
+	ln, err := net.Listen("tcp", s.listenAddr)
 	if err != nil {
 		return err
 	}
+	defer ln.Close()
+	s.ln = ln
 
-	defer server.Close()
+	go s.acceptLoop()
 
-	fmt.Println("Listening on " + SERVER_HOST + ":" + SERVER_PORT)
-	fmt.Println("Waiting for client...")
+	<-s.quitch
+	return nil
+}
 
+func (s *Server) acceptLoop() {
 	for {
-		connection, err := server.Accept()
+		conn, err := s.ln.Accept()
 		if err != nil {
-			print("help!!")
-			return err
+			fmt.Println("Accept error:", err)
+			continue
 		}
-		go processClient(connection)
+
+		fmt.Println("new connection to the server:", conn.RemoteAddr())
+
+		go s.readLoop(conn)
 	}
 }
 
-func processClient(connection net.Conn) {
+func (s *Server) readLoop(conn net.Conn) {
+	defer conn.Close()
+	buf := make([]byte, 2048)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			fmt.Println("read error:", err)
+			continue
+		}
 
-	buffer := make([]byte, 1024)
-	mLen, err := connection.Read(buffer)
-
-	if err != nil {
-		log.Fatal(err)
+                s.msgch <- buf[:n]
 	}
-
-	var p Payload
-	payload := string(buffer[:mLen])
-	p, err = parseJson(payload, p)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("Mpu\nAccereration: (%v,%v,%v)\nRotation: (%v,%v,%v)\nTemp: (%v)\nHall: %v\n",
-		p.Mpu.Acceleration.X, p.Mpu.Acceleration.Y, p.Mpu.Acceleration.Z,
-		p.Mpu.Rotation.X, p.Mpu.Rotation.Y, p.Mpu.Rotation.Z, p.Mpu.Temp, p.Hall)
-
-	_, err = connection.Write([]byte("Thanks! Got your message:" + string(buffer[:mLen])))
-	connection.Close()
-}
-
-func parseJson(payload string, p Payload) (Payload, error) {
-
-	err := json.Unmarshal([]byte(payload), &p)
-	if err != nil {
-		return p, err
-	}
-
-	return p, nil
 }
