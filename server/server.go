@@ -3,60 +3,54 @@ package server
 import (
 	"fmt"
 	"net"
-)
 
+)
 type Message struct {
-        from string 
-        payload []byte
+        From string 
+        Payload []byte
 }
 
 type Server struct {
-	listenAddr string
-	ln         net.Listener
-	quitch     chan struct{}
-	msgch      chan Message
+	ListenAddr string
+	Ln         net.Listener
+	Quitch     chan struct{}
+	Msgch      chan Message
 }
 
-func NewServer(listenAddr string) *Server {
+func NewServer(ListenAddr string) *Server {
 	return &Server{
-		listenAddr: listenAddr,
-		quitch:     make(chan struct{}),
-		msgch:      make(chan Message ),
+		ListenAddr: ListenAddr,
+		Quitch:     make(chan struct{}),
+		Msgch:      make(chan Message, 100),
 	}
 }
 
 func (s *Server) Start() error {
-	ln, err := net.Listen("tcp", s.listenAddr)
+	Ln, err := net.Listen("tcp", "0.0.0.0"+s.ListenAddr)
 	if err != nil {
 		return err
 	}
-	defer ln.Close()
-	s.ln = ln
+	defer Ln.Close()
+	s.Ln = Ln
 
 	go s.acceptLoop()
 
-	<-s.quitch
-        close(s.msgch)
-
-	go func() {
-		for msg := range s.msgch {
-			fmt.Printf("msg from conn (%v): %s\n", 
-                        msg.from, string(msg.payload))
-		}
-	}()
+	<-s.Quitch
+        close(s.Msgch)
+	
 
 	return nil
 }
 
 func (s *Server) acceptLoop() {
 	for {
-		conn, err := s.ln.Accept()
+		conn, err := s.Ln.Accept()
 		if err != nil {
 			fmt.Println("Accept error:", err)
 			continue
 		}
 
-		fmt.Println("new connection to the server:", conn.RemoteAddr())
+		//fmt.Println("new connection to the server:", conn.RemoteAddr())
 
 		go s.readLoop(conn)
 	}
@@ -66,15 +60,19 @@ func (s *Server) readLoop(conn net.Conn) {
 	defer conn.Close()
         buf := make([]byte, 1024)
 	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-			fmt.Println("read error:", err)
-			continue
-		}
+		conn.Read(buf)
+                //fmt.Println("read error:", string(buf))
+		//if err != nil {
+		//	fmt.Println("read error:", err)
+		//	//continue
+		//}
 
-		s.msgch <- Message{
-                        from: conn.RemoteAddr().String(),
-                        payload: buf[:n],
+		s.Msgch <- Message{
+                        From: conn.RemoteAddr().String(),
+                        Payload: buf,
                 }
+
+                conn.Write([]byte("arigatougozaimasu"))
 	}
 }
+
