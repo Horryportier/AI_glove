@@ -12,12 +12,12 @@ func main() {
 	s := server.NewServer(":8090")
 
 	go func() {
-		for msg := range s.Msgch {
-                        fmt.Printf("msg from conn (%v): %s\n",
-				msg.From, string(msg.Payload))
-		}
+			for msg := range s.Msgch {
+				fmt.Printf("msg from conn (%v): %s\n",
+					server.GoodStyle.Render(msg.From), string(msg.Payload))
+
+			}
 	}()
 
 	log.Fatal(s.Start())
 }
-
