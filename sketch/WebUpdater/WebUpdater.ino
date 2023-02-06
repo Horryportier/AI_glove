@@ -4,7 +4,7 @@
 
 #include <WiFi.h>
 #include <WiFiClient.h>
-
+#include <secrets.h>
 
 // my imports
 #include <Adafruit_MPU6050.h>
@@ -12,10 +12,6 @@
 #include <Wire.h>
 #include <ArduinoJson.h>
 
-#ifndef STASSID
-#define STASSID "Tenda"
-#define STAPSK "inter100200"
-#endif
 
 const char* host = "esp32-webupdate";
 const char* ssid = STASSID;
@@ -60,7 +56,24 @@ void setup(void) {
 }
 
 void loop(void) {
+        
+        String output = Mpu();
 
+        WiFiClient client;
+
+        if (!client.connect(pc, port)) {
+                digitalWrite(LED_BUILDIN, LOW);
+                return;
+        }
+
+        client.print(output);
+        client.stop();
+        delay(20);
+        digitalWrite(LED_BUILDIN, HIGH);
+}
+
+
+String Mpu() {
         sensors_event_t a, g, temp;
         mpu.getEvent(&a, &g, &temp);
 
@@ -88,15 +101,10 @@ void loop(void) {
 
         serializeJson(doc, output);
 
-        WiFiClient client;
 
-        if (!client.connect(pc, port)) {
-                digitalWrite(LED_BUILDIN, LOW);
-                return;
-        }
+        return output;
+}
 
-        client.print(output);
-        client.stop();
-        delay(20);
-        digitalWrite(LED_BUILDIN, HIGH);
+void Lisen() { 
+
 }
